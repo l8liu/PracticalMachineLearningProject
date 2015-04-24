@@ -1,7 +1,5 @@
----
-title: "Practical Machine Learning Course Project"
-output: html_document
----
+# Practical Machine Learning Course Project
+
 
 ## Introduction
 
@@ -35,8 +33,6 @@ training = read.csv('pml_train.csv')
 #url = 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
 #download.file(url, destfile = 'pml_test.csv')
 testing = read.csv('pml_test.csv')
-
-
 
 ```
 
