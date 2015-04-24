@@ -1,5 +1,7 @@
-# Practical Machine Learning Course Project
-
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+---
 
 ## Introduction
 
