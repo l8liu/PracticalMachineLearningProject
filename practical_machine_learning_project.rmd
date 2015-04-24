@@ -1,0 +1,129 @@
+---
+title: "Practical Machine Learning Course Project"
+output: html_document
+---
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. In this project, we will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+
+## Getting data
+
+```{r}
+rm(list = ls())
+
+library(dplyr)
+library(caret)
+library(rattle)
+
+#url = 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
+#download.file(url, destfile = 'pml_train.csv')
+training = read.csv('pml_train.csv')
+
+#url = 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv'
+#download.file(url, destfile = 'pml_test.csv')
+testing = read.csv('pml_test.csv')
+
+
+
+```
+
+## data cleaning and preparation
+
+THe datasets contain 159 variables and 19622 observations. First, we remove the first 7 variables which are not related to movement.  
+
+```{r}
+
+training = training[, -(1:7)]
+testing = testing[, -(1:7)]
+```
+
+Then the variables with near zero variance and one distinct value were removed from the predictors.
+
+```{r}
+nsv = nearZeroVar(training, saveMetrics = T)
+
+predictors = rownames(nsv)[nsv$nzv == 'FALSE' & nsv$zeroVar == 'FALSE']
+train1 = training[, predictors]
+
+colnames(testing)[ncol(testing)] = colnames(training)[ncol(training)]
+#data.frame(colnames(training), colnames(testing))
+test1 = testing[, predictors]
+
+```
+
+Moreover, we also remove the variables with more than 70% missing values
+
+```{r}
+count_na = function(it){
+    sum(is.na(train1[,it]))/nrow(train1)
+}
+na_count = sapply(1:ncol(train1), FUN = count_na)
+
+pos = (na_count <= 0.7)
+train = train1[, pos]
+test = test1[, pos]
+```
+
+The left 53 variables contain 52 predictors and 1 outcome. Moreover, we also remove the last variable in the testing data set which is non-informatic.
+
+```{r]}
+
+colnames(train)
+test = test [-ncol(test)]
+
+```
+
+The traing data set was split into 70% my training data and 30% my testing set for model parameter tuning and evaluation respectively.
+
+
+```{r}
+inTrain = createDataPartition(y=train$classe, p=0.7, list=FALSE)
+mytrain = train[inTrain, ]
+mytest = train[-inTrain, ]
+
+```
+
+## Tree model
+
+The tree model was fitted to my training data. We using 10 fold cross validation method automatically tune the parameter by the 'train' function using the 'caret' package, then fit the model with the best tune value. By cross validation, the accuracy is 0.90 for the final model, so the out of sample error is 0.1.
+
+```{r}
+set.seed(123)
+m_rpart = train(classe ~ ., method = 'rpart', trControl = trainControl(method = 'cv'), tuneGrid = data.frame(cp = seq(0.001, 0.005, 0.001)), data = mytrain)
+m_rpart
+m_rpart$bestTune   
+
+
+```
+
+We apply the final model to training and testing dataset to evaluate in and out of sample errors. respectively. The accuracy for the predicted mytraining data is 0.9023, which represent the insample error, while for mytesting set is 0.90, which is slightly lower than the form.
+
+```{r, fig.width = 6.5, fig.lenght = 6.5}
+pred_train = predict(m_rpart, mytrain)
+confusionMatrix(pred_train, mytrain$classe)
+
+pred_test = predict(m_rpart, mytest)
+confusionMatrix(pred_test, mytest$classe)
+
+
+```
+
+## predict new data
+
+Now we use our tree model to predict the 20 samples in the test data.
+
+```{r}
+predict(m_rpart, test)
